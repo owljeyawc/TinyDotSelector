@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>paruco selector</title>
+    <title>parco selector</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -374,6 +374,7 @@
         sizeRange.addEventListener('input', (e) => { sizeValue.textContent = e.target.value + '%'; updatePreview(); });
 
         // 4. ダウンロード処理（現在のプレビュー状態をそのまま保存）
+        /*
         downloadBtn.addEventListener('click', () => {
             if (!currentLoadedImage) return;
             processStatus.textContent = 'ダウンロードしています...';
@@ -394,6 +395,82 @@
 
 
         });
+*/
+        // 4. ダウンロード処理（iOS対応・完全デバッグ版）
+        downloadBtn.addEventListener('click', () => {
+            if (!currentLoadedImage) return;
+            processStatus.textContent = '画像を処理中...';
+
+            try {
+                // 現在のCanvasから画像データ（Base64文字列）を取得
+                const imageDataUrl = previewCanvasView.toDataURL('image/png');
+                const fileName = `${selectedImgName}_bgapplied_${sizeRange.value}percent.png`;
+
+                // ユーザーのエージェント（端末タイプ）を判定
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+                if (isIOS) {
+                    // --- iOS（iPhone / iPad）向けの処理 ---
+                    processStatus.textContent = '新しいタブで画像を開きます。画像を長押しして「写真に追加」してください。';
+
+                    // 新しいタブ（ウィンドウ）を開く
+                    const newWindow = window.open();
+                    if (newWindow) {
+                        // 新しいタブのHTMLに直接画像と、案内テキストを書き込む
+                        newWindow.document.write(`
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <meta charset="UTF-8">
+                                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                <title>画像を保存</title>
+                                <style>
+                                    body { margin: 0; background: #222; color: #fff; font-family: sans-serif; text-align: center; padding: 20px; }
+                                    img { max-width: 100%; height: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-top: 20px; }
+                                    .info { background: rgba(0,0,0,0.6); padding: 15px; border-radius: 8px; font-size: 15px; line-height: 1.5; margin-bottom: 10px; }
+                                    .close-btn { margin-top: 30px; display: inline-block; color: #aaa; font-size: 13px; text-decoration: underline; cursor: pointer; }
+                                </style>
+                            </head>
+                            <body>
+                                <div class="info">
+                                    <strong>💡 画像の保存方法</strong><br>
+                                    下の画像を<strong>長押し</strong>して、<br><strong>「"写真"に追加」</strong> または 「画像を保存」 を選択してください。
+                                </div>
+                                <img src="${imageDataUrl}" alt="加工画像">
+                                <br>
+                                <div class="close-btn" onclick="window.close()">← 元の画面に戻る</div>
+                            </body>
+                            </html>
+                        `);
+                        newWindow.document.close();
+                    } else {
+                        alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可するか、Safari/Chromeアプリで開き直してください。');
+                        processStatus.textContent = 'ポップアップブロックを解除してください。';
+                    }
+
+                } else {
+                    // --- PC・Android向けの通常ダウンロード処理 ---
+                    const link = document.createElement('a');
+                    link.download = fileName;
+                    link.href = imageDataUrl;
+
+                    // iOS以外のSafari等での誤作動を防ぐため、一時的にDOMへ追加してクリック
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    processStatus.textContent = 'ダウンロードが完了しました。';
+                }
+
+            } catch (error) {
+                console.error(error);
+                processStatus.textContent = 'エラーが発生しました。';
+                alert('画像のデータ化に失敗しました。ローカルサーバー(Live Server等)を経由して実行しているかご確認ください。');
+            }
+        });
+
+
 
     </script>
 </body>
